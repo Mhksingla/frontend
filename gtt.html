@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Appointment</title>
+    <style>
+        /* Style similar to the contact form on your page */
+        body {
+            background-image: url("images/loginbg.jpeg");
+            color: #333; 
+        }
+        .contact-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: rgba(0, 0, 0, 0.2) 0px 5px 15px;
+            text-align: center;
+        }
+        h1 {
+            color: darkcyan;
+        }
+        p {
+            color: #555;
+        }
+        .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        label {
+            text-align: left;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        textarea,
+        select,
+        input[type="datetime-local"] {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .button1 {
+            padding: 10px;
+            background-color: darkcyan;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .button1:hover {
+            background-color: #005f5f; 
+        }
+        /* Styling for the records display */
+        .records-container {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f8f8;
+            border-radius: 10px;
+            box-shadow: rgba(0, 0, 0, 0.1) 0px 5px 10px;
+        }
+        .record-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: rgba(0, 0, 0, 0.1) 0px 3px 6px;
+        }
+        .record-item p {
+            margin: 5px 0;
+            color: #333;
+        }
+    </style>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
+    <!-- jsPDF Library for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmeXkxMW0GcSHjDRdeDaWyFfGqIlcCFTM",
+            authDomain: "hospital-1416f.firebaseapp.com",
+            projectId: "hospital-1416f",
+            storageBucket: "hospital-1416f.appspot.com",
+            messagingSenderId: "971853314770",
+            appId: "1:971853314770:web:b15df2a1029ccc6eb60b0b"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Function to generate PDF report with custom styling
+        function generatePDFReport(data) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Set up font and colors to match the web page style
+            doc.setFont("helvetica", "bold");  // Helvetica Bold
+            doc.setTextColor(33, 150, 143); // Dark Cyan color for headers
+
+            // Title
+            doc.setFontSize(18);
+            doc.text("Appointment Confirmation Report", 20, 20);
+
+            // Body text style
+            doc.setFontSize(12);
+            doc.setTextColor(51, 51, 51);  // Dark gray color for body text
+            doc.setFont("helvetica", "normal");
+
+            // Add appointment details
+            doc.text(`Name: ${data.name}`, 20, 40);
+            doc.text(`Email: ${data.email}`, 20, 50);
+            doc.text(`Phone: ${data.phone}`, 20, 60);
+            doc.text(`Doctor: ${data.doctor}`, 20, 70);
+            doc.text(`Slot: ${data.slot}`, 20, 80);
+            doc.text(`Date & Time: ${data.dateTime}`, 20, 90);
+            doc.text(`Message: ${data.message}`, 20, 100);
+
+            // Footer text
+            doc.setTextColor(100);
+            doc.setFontSize(10);
+            doc.text("Thank you for booking an appointment with us!", 20, 120);
+
+            // Download the PDF
+            doc.save(`Appointment_Report_${data.name}.pdf`);
+        }
+
+        // Handle form submission and save data to Firestore
+        async function handleSubmit(event) {
+            event.preventDefault();
+
+            // Get form data
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const doctor = document.getElementById('doctor').value;
+            const slot = document.getElementById('slot').value;
+            const dateTime = document.getElementById('dateTime').value;
+            const message = document.getElementById('message').value;
+
+            const formData = {
+                name,
+                email,
+                phone,
+                doctor,
+                slot,
+                dateTime,
+                message,
+                timestamp: new Date()  
+            };
+
+            try {
+                // Save data to Firestore
+                await db.collection("appointments").add(formData);
+                
+                alert('Your appointment has been booked successfully!');
+                console.log('Data saved to Firestore:', formData);
+
+                // Generate PDF report
+                generatePDFReport(formData);
+
+                // Clear the form
+                document.querySelector(".contact-form").reset();
+
+                // Display updated records
+                displayRecords();
+
+            } catch (error) {
+                console.error('Error saving data:', error);
+                alert('An error occurred. Please try again.');
+            }
+        }
+
+        // Fetch all records from Firestore and display them
+        async function displayRecords() {
+            const recordsContainer = document.getElementById('records-container');
+            recordsContainer.innerHTML = '';
+
+            try {
+                const snapshot = await db.collection("appointments").orderBy("timestamp", "desc").get();
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const recordItem = document.createElement('div');
+                    recordItem.classList.add('record-item');
+                    recordItem.innerHTML = `
+                        <p><strong>Name:</strong> ${data.name}</p>
+                        <p><strong>Email:</strong> ${data.email}</p>
+                        <p><strong>Phone:</strong> ${data.phone}</p>
+                        <p><strong>Doctor:</strong> ${data.doctor}</p>
+                        <p><strong>Slot:</strong> ${data.slot}</p>
+                        <p><strong>Date & Time:</strong> ${data.dateTime}</p>
+                        <p><strong>Message:</strong> ${data.message}</p>
+                        <p><small>Submitted at: ${data.timestamp.toDate()}</small></p>
+                    `;
+                    recordsContainer.appendChild(recordItem);
+                });
+            } catch (error) {
+                console.error('Error retrieving records:', error);
+                alert('Failed to fetch records.');
+            }
+        }
+
+        // Load records on page load
+        window.onload = function() {
+            displayRecords();
+        };
+    </script>
+</head>
+<body>
+    <section id="contact">
+        <div class="contact-container">
+            <h1>Book Appointment</h1>
+            <p>Please fill out the form below to schedule an appointment.</p>
+            <form class="contact-form" onsubmit="handleSubmit(event)">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required>
+                
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+                
+                <label for="phone">Phone:</label>
+                <input type="tel" id="phone" name="phone" required>
+                
+                <label for="doctor">Select Doctor:</label>
+                <select id="doctor" name="doctor" required>
+                    <option value="Dr. Smith">Dr. Smith</option>
+                    <option value="Dr. Johnson">Dr. Johnson</option>
+                    <option value="Dr. Lee">Dr. Lee</option>
+                </select>
+                
+                <label for="slot">Select Slot:</label>
+                <select id="slot" name="slot" required>
+                    <option value="9:00 AM - 10:00 AM">9:00 AM - 10:00 AM</option>
+                    <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>
+                    <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</option>
+                </select>
+                
+                <label for="dateTime">Date & Time:</label>
+                <input type="datetime-local" id="dateTime" name="dateTime" required>
+                
+                <label for="message">Message:</label>
+                <textarea id="message" name="message" rows="4" required></textarea>
+                
+                <button class="button1" type="submit" id="submit">Book Appointment</button>
+            </form>
+        </div>
+
+        <div id="records-container" class="records-container"></div>
+    </section>
+</body>
+</html>

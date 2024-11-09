@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us</title>
+    <style>
+        body {
+            background-image: url("images/loginbg.jpeg");
+            color: #333; 
+        }
+        .contact-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: rgba(0, 0, 0, 0.2) 0px 5px 15px;
+            text-align: center;
+        }
+        h1 {
+            color: darkcyan;
+        }
+        p {
+            color: #555;
+        }
+        .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        label {
+            text-align: left;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        textarea {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .button1 {
+            padding: 10px;
+            background-color: darkcyan;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .button1:hover {
+            background-color: #005f5f; 
+        }
+
+        @media (max-width: 768px) {
+            .contact-container {
+                margin: 20px;
+                padding: 15px;
+            }
+        }
+
+        /* Styling for the records display */
+        .records-container {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f8f8;
+            border-radius: 10px;
+            box-shadow: rgba(0, 0, 0, 0.1) 0px 5px 10px;
+        }
+        .record-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: rgba(0, 0, 0, 0.1) 0px 3px 6px;
+        }
+        .record-item p {
+            margin: 5px 0;
+            color: #333;
+        }
+    </style>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
+    
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBmeXkxMW0GcSHjDRdeDaWyFfGqIlcCFTM",
+            authDomain: "hospital-1416f.firebaseapp.com",
+            databaseURL: "https://hospital-1416f-default-rtdb.firebaseio.com",
+            projectId: "hospital-1416f",
+            storageBucket: "hospital-1416f.firebasestorage.app",
+            messagingSenderId: "971853314770",
+            appId: "1:971853314770:web:b15df2a1029ccc6eb60b0b"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Handle form submission and save data to Firestore
+        async function handleSubmit(event) {
+            event.preventDefault();  // Prevent form from refreshing the page
+
+            // Get form data
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const phone = document.getElementById('phone').value;
+            const message = document.getElementById('message').value;
+
+            try {
+                // Save data to Firestore's "patient" collection
+                await db.collection("patient").add({
+                    name: name,
+                    email: email,
+                    phone: phone,
+                    message: message,
+                    timestamp: new Date()  // Optional: Store a timestamp
+                });
+
+                alert('Your message has been sent successfully!');
+                console.log('Data saved to Firestore:', { name, email, phone, message });
+
+                // Clear the form after submission
+                document.querySelector(".contact-form").reset();
+
+                // Fetch and display updated records
+                displayRecords();
+
+            } catch (error) {
+                console.error('Error saving data:', error);
+                alert('An error occurred. Please try again.');
+            }
+        }
+
+        // Fetch all records from Firestore and display them
+        async function displayRecords() {
+            const recordsContainer = document.getElementById('records-container');
+            recordsContainer.innerHTML = ''; // Clear current displayed records
+
+            try {
+                // Get all records from Firestore
+                const snapshot = await db.collection("patient").orderBy("timestamp", "desc").get();
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const recordItem = document.createElement('div');
+                    recordItem.classList.add('record-item');
+                    recordItem.innerHTML = `
+                        <p><strong>Name:</strong> ${data.name}</p>
+                        <p><strong>Email:</strong> ${data.email}</p>
+                        <p><strong>Phone:</strong> ${data.phone}</p>
+                        <p><strong>Message:</strong> ${data.message}</p>
+                        <p><small>Submitted at: ${data.timestamp.toDate()}</small></p>
+                    `;
+                    recordsContainer.appendChild(recordItem);
+                });
+            } catch (error) {
+                console.error('Error retrieving records:', error);
+                alert('Failed to fetch records.');
+            }
+        }
+
+        // Load records when the page is loaded
+        window.onload = function() {
+            displayRecords();
+        };
+    </script>
+</head>
+<body>
+    <section id="contact">
+        <div class="contact-container">
+            <h1>Get in Touch</h1>
+            <p>If you have any queries, feel free to reach out to us!</p>
+            <form class="contact-form" onsubmit="handleSubmit(event)">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+                <label for="phone">Phone:</label>
+                <input type="tel" id="phone" name="phone" required>
+                <label for="message">Message:</label>
+                <textarea id="message" name="message" rows="4" required></textarea>
+                <button class="button1" type="submit" id="submit">Send Message</button>
+            </form>
+        </div>
+    </section>
+
+</body>
+</html>
